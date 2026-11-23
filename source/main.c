@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <3ds.h>
 #include <citro2d.h>
 #include <stdlib.h>

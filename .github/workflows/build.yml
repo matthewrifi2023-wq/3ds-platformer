@@ -5,11 +5,21 @@ jobs:
     runs-on: ubuntu-latest
     container: devkitpro/devkitarm:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Compile
-        run: make
+        run: |
+          export DEVKITPRO=/opt/devkitpro
+          export DEVKITARM=/opt/devkitpro/devkitARM
+          export PATH=$DEVKITARM/bin:$DEVKITPRO/tools/bin:$PATH
+          arm-none-eabi-gcc -g -Wall -O2 -mword-relocations -ffunction-sections \
+            -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft -D__3DS__ \
+            -I$DEVKITPRO/libctru/include -I$DEVKITPRO/portlibs/3ds/include \
+            source/main.c \
+            -specs=3dsx.specs -L$DEVKITPRO/libctru/lib -L$DEVKITPRO/portlibs/3ds/lib \
+            -lcitro2d -lcitro3d -lctru -lm -o platformer3ds.elf
+          3dsxtool platformer3ds.elf platformer3ds.3dsx
       - name: Upload 3DSX
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: platformer3ds
           path: platformer3ds.3dsx

@@ -44,7 +44,7 @@ void generateLevel() {
     velX = velY = 0.0f;
 }
 
-bool checkTileCollision(float x, float y, int targetType) {
+bool checkSolidCollision(float x, float y) {
     int left   = (int)(x / TILE_SIZE);
     int right  = (int)((x + playerSize - 0.1f) / TILE_SIZE);
     int top    = (int)(y / TILE_SIZE);
@@ -53,7 +53,50 @@ bool checkTileCollision(float x, float y, int targetType) {
     for (int r = top; r <= bottom; r++) {
         for (int c = left; c <= right; c++) {
             if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
-                if (level[r][c] == targetType) return true;
+                if (level[r][c] == 1) return true;
+            }
+        }
+    }
+    return false;
+}
+
+// Accurate triangle hitbox matching the drawn red spike
+bool checkSpikeCollision(float x, float y) {
+    float pLeft   = x + 1.5f;
+    float pRight  = x + playerSize - 1.5f;
+    float pTop    = y + 1.5f;
+    float pBottom = y + playerSize - 1.0f;
+
+    int left   = (int)(pLeft / TILE_SIZE);
+    int right  = (int)(pRight / TILE_SIZE);
+    int top    = (int)(pTop / TILE_SIZE);
+    int bottom = (int)(pBottom / TILE_SIZE);
+
+    for (int r = top; r <= bottom; r++) {
+        for (int c = left; c <= right; c++) {
+            if (r >= 0 && r < ROWS && c >= 0 && c < COLS && level[r][c] == 2) {
+                float tx = c * TILE_SIZE;
+                float ty = r * TILE_SIZE;
+
+                // Drawn triangle bounds: apex (tx + 10, ty + 2), base (tx + 2..tx + 18, ty + 20)
+                float sTop = ty + 3.0f;
+                float sBottom = ty + TILE_SIZE;
+                if (pBottom <= sTop || pTop >= sBottom) continue;
+
+                // Lowest player Y overlapping the spike determines widest horizontal span
+                float testY = (pBottom < sBottom) ? pBottom : sBottom;
+                float progress = (testY - (ty + 2.0f)) / (TILE_SIZE - 2.0f); // 0 at tip, 1 at base
+                if (progress < 0.0f) progress = 0.0f;
+                if (progress > 1.0f) progress = 1.0f;
+
+                float halfWidth = progress * ((TILE_SIZE / 2.0f) - 2.5f);
+                float centerX = tx + (TILE_SIZE / 2.0f);
+                float sLeft = centerX - halfWidth;
+                float sRight = centerX + halfWidth;
+
+                if (pRight > sLeft && pLeft < sRight) {
+                    return true;
+                }
             }
         }
     }
@@ -92,7 +135,7 @@ int main(int argc, char* argv[]) {
 
         playerX += velX;
         if (playerX < 0) playerX = 0;
-        if (checkTileCollision(playerX, playerY, 1)) playerX -= velX;
+        if (checkSolidCollision(playerX, playerY)) playerX -= velX;
 
         if (playerX + playerSize >= SCREEN_W) generateLevel();
 
@@ -105,13 +148,13 @@ int main(int argc, char* argv[]) {
 
         playerY += velY;
         onGround = false;
-        if (checkTileCollision(playerX, playerY, 1)) {
+        if (checkSolidCollision(playerX, playerY)) {
             if (velY > 0) onGround = true;
             playerY -= velY;
             velY = 0.0f;
         }
 
-        if (playerY > SCREEN_H || checkTileCollision(playerX, playerY, 2)) {
+        if (playerY > SCREEN_H || checkSpikeCollision(playerX, playerY)) {
             playerX = 24.0f;
             playerY = (ROWS - 2) * TILE_SIZE - playerSize;
             velY = 0.0f;
